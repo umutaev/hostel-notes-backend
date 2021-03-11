@@ -1,8 +1,15 @@
-from aiohttp import web
 import time
 import json
 
+from aiohttp import web
+
+import simple_auth
+
+# CRUNCHES
 notes = []
+users = [("First User", "Someones_password"),
+         ("Second User", "Very_strong_pass")]
+# CRUNCHES
 
 
 async def api_create(request):
@@ -12,9 +19,12 @@ async def api_create(request):
     if 'text' not in post:
         return web.Response(text='Note can\'t be empty', status=400)
     text = post['text']
-    username = request.cookies.get('username', None)
+    if 'username' not in post:
+        return web.Response(text='Username can\'t be empty', status=401)
+    username = post['username']
     auth_token = request.cookies.get('auth_token', None)
-    # TODO: check auth
+    if not auth.check_user(username, auth_token):
+        return web.Response(text='Unauthorized', status=401)
     notes.append({'id': note_id + 1,
                   'username': username,
                   'text': text,
@@ -34,9 +44,12 @@ async def api_update(request):
         return web.Response(text='Note or ID can\'t be empty', status=400)
     text = post['text']
     note_id = int(post['id'])
-    username = request.cookies.get('username', None)
+    if 'username' not in post:
+        return web.Response(text='Username can\'t be empty', status=401)
+    username = post['username']
     auth_token = request.cookies.get('auth_token', None)
-    # TODO: check auth
+    if not auth.check_user(username, auth_token):
+        return web.Response(text='Unauthorized', status=401)
     note_with_given_id = next((item for item in notes if item['id'] == note_id), None)
     if note_with_given_id is None:
         return web.Response(text='Invalid ID.', status=400)
@@ -52,9 +65,12 @@ async def api_delete(request):
     if 'id' not in post:
         return web.Response(text='ID can\'t be empty', status=400)
     note_id = int(post['id'])
-    username = request.cookies.get('username', None)
+    if 'username' not in post:
+        return web.Response(text='Username can\'t be empty', status=401)
+    username = post['username']
     auth_token = request.cookies.get('auth_token', None)
-    # TODO: check auth
+    if not auth.check_user(username, auth_token):
+        return web.Response(text='Unauthorized', status=401)
     note_with_given_id = next((item for item in notes if item['id'] == note_id), None)
     if note_with_given_id is None:
         return web.Response(text='Invalid ID.', status=400)
@@ -66,6 +82,7 @@ app.add_routes([web.post('/api/create', api_create),
                 web.route('*', '/api/read', api_read),
                 web.post('/api/update', api_update),
                 web.post('/api/delete', api_delete)])
+auth = simple_auth.Authenticate(users)
 
 if __name__ == '__main__':
     web.run_app(app)
